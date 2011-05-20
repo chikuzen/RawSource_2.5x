@@ -21,7 +21,7 @@ class RawSource: public IClip {
 	__int64 filelen;
 	__int64 headeroffset;	//YUV4MPEG2 header offset
 	int headerlen;	//YUV4MPEG2 frame header length
-	char headerbuf[64];
+	char headerbuf[128];
 	char pixel_type[32];
 	int bytes_per_line;
 	unsigned char rawbuf[maxwidth*4];	//max linesize 4Bytes * maxwidth
@@ -33,7 +33,7 @@ class RawSource: public IClip {
 
 	int level;
 	bool show;	//show debug info
-	
+
 	struct ri_struct {
 		int framenr;
 		__int64 bytepos;
@@ -42,7 +42,7 @@ class RawSource: public IClip {
 		__int64 index;
 		char type; //Key, Delta, Bigdelta
 	};
-	
+
 	ri_struct * rawindex;
 	i_struct * index;
 
@@ -70,7 +70,7 @@ RawSource::RawSource (const char name[], const int _width, const int _height, co
 
 	level = 0;
 	show = _show;
-	
+
 	headerlen = 0;
 	headeroffset = 0;
 	filelen = _filelengthi64(h_rawfile);
@@ -86,14 +86,30 @@ RawSource::RawSource (const char name[], const int _width, const int _height, co
 	vi.audio_samples_per_second=0;
 
 	if (!strcmp(indexstring, "")) {	//use header if valid else width, height, pixel_type from AVS are used
-		ret = _read(h_rawfile, headerbuf, 60);	//read some bytes and test on header
+		ret = _read(h_rawfile, headerbuf, 128);	//read some bytes and test on header
 		ret = RawSource::ParseHeader();
-		if (ret>0) {
-			strcpy(pixel_type,"I420");	//valid header found
-		};
-		if (ret<0) {
-			env->ThrowError("YUV4MPEG2 header error.");
-		};
+		switch (ret) {
+			case 4444:
+				strncpy(pixel_type, "YUV444A", 7);
+				break;
+			case 444:
+				strncpy(pixel_type, "I444", 4);
+				break;
+			case 422:
+				strncpy(pixel_type, "I422", 4);
+				break;
+			case 420:
+				strncpy(pixel_type, "I420", 4);
+				break;
+			case 411:
+				strncpy(pixel_type, "I411", 4);
+				break;
+			case 8:
+				strncpy(pixel_type, "Y8", 2);
+				break;
+			default:
+				env->ThrowError("YUV4MPEG2 header error.");
+		}
 	}
 
 	vi.pixel_type = VideoInfo::CS_UNKNOWN;
@@ -122,7 +138,7 @@ RawSource::RawSource (const char name[], const int _width, const int _height, co
 		mapping[3] = 3;
 		mapcnt = 4;
 	}
-	
+
 	if (!stricmp(pixel_type,"BGRA")) {
 		vi.pixel_type = VideoInfo::CS_BGR32;
 		mapping[0] = 0;
@@ -138,7 +154,7 @@ RawSource::RawSource (const char name[], const int _width, const int _height, co
 		mapping[1] = 1;
 		mapcnt = 2;
 	}
-	
+
 	if (!stricmp(pixel_type,"UYVY")) {
 		vi.pixel_type = VideoInfo::CS_YUY2;
 		mapping[0] = 1;
@@ -154,7 +170,7 @@ RawSource::RawSource (const char name[], const int _width, const int _height, co
 		mapping[3] = 1;
 		mapcnt = 4;
 	}
-	
+
 	if (!stricmp(pixel_type,"VYUY")) {
 		vi.pixel_type = VideoInfo::CS_YUY2;
 		mapping[0] = 1;
@@ -296,7 +312,7 @@ RawSource::RawSource (const char name[], const int _width, const int _height, co
 			}
 		}
 
-//check for new delta and big_delta		
+//check for new delta and big_delta
 		if ((p_ri>0) && (rawindex[p_ri].framenr == rawindex[p_ri-1].framenr + 1)) {
 			delta = (int)(rawindex[p_ri].bytepos - rawindex[p_ri-1].bytepos);
 		} else if (p_ri>1) {
@@ -352,7 +368,7 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
 		level = 0;
 		return src1;
 	//end debug
-	} 
+	}
 
 	dst = env->NewVideoFrame(vi);
 	ret = (int)_lseeki64(h_rawfile, index[n].index , SEEK_SET);
@@ -469,61 +485,92 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 int RawSource::ParseHeader() {
-	int i,j;
-	int numerator, denominator;
-	if (memcmp(headerbuf, "YUV4MPEG2", 9) != 0) return 0;
+	int i = 9;
+	unsigned numerator = 0, denominator = 0;
+	int colorspace = 420;
+	char ctag[9] = {0};
+
+	if (!strncmp(headerbuf, "YUV4MPEG2", 9))
+		return 0;
 
 	vi.height = 0;
 	vi.width = 0;
-	i=9;
-	while ( (i<64) && (headerbuf[i]!='\n') ) {
-		if (memcmp(headerbuf+i, " W", 2) == 0) {
-			sscanf(headerbuf+i+2, "%d", &vi.width);
+
+	while ((i < 128) && (headerbuf[i] != '\n')) {
+		if (!strncmp(headerbuf + i, " W", 2)) {
+			i += 2;
+			sscanf(headerbuf + i, "%d", &vi.width);
 		}
-		if (memcmp(headerbuf+i, " H", 2) == 0) {
-			sscanf(headerbuf+i+2, "%d", &vi.height);
+
+		if (!strncmp(headerbuf + i, " H", 2)) {
+			i += 2;
+			sscanf(headerbuf + i, "%d", &vi.height);
 		}
-		if (memcmp(headerbuf+i, " I", 2) == 0) {
-			if (headerbuf[i+2]=='p') {
+
+		if (!strncmp(headerbuf + i, " I", 2)) {
+			i += 2;
+			if (headerbuf[i] == 'p')
 				vi.SetFieldBased(false);
-			};
-			if (headerbuf[i+2]=='t') {
-				vi.SetFieldBased(true);
+			else if (headerbuf[i] == 't') {
+				vi.SetFieldBased(false);
 				vi.Set(VideoInfo::IT_TFF);
-			}
-			if (headerbuf[i+2]=='b') {
-				vi.SetFieldBased(true);
+			} else if (headerbuf[i] == 'b') {
+				vi.SetFieldBased(false);
 				vi.Set(VideoInfo::IT_BFF);
-			}
+			} else
+				return 0;
 		}
-		if (memcmp(headerbuf+i, " F", 2) == 0) {
-			numerator = 0;
-			denominator = 0;
-			sscanf(headerbuf+i+2, "%d", &numerator);
-			for (j=0; j<7; j++) {
-				if (headerbuf[i+2+j]==':') {
-					sscanf(headerbuf+i+2+j+1, "%d", &denominator);
-				}
-			}
-			if ((numerator!=0) && (denominator!=0)) {
+
+		if (!strncmp(headerbuf + i, " F", 2)) {
+			i += 2;
+			sscanf(headerbuf + i, "%u:%u", &numerator, &denominator);
+			if (numerator && denominator)
 				vi.SetFPS(numerator, denominator);
-			}
+			else
+				return 0;
 		}
+
+		if (!strncmp(headerbuf + i, " C", 2)) {
+			i += 2;
+			sscanf(headerbuf + i, "%s", ctag);
+			if (!strncmp(ctag, "444alpha", 8))
+				colorspace = 4444;
+			else if (!strncmp(ctag, "444", 3))
+				colorspace = 444;
+			else if (!strncmp(ctag, "422", 3))
+				colorspace = 422;
+			else if (!strncmp(ctag, "411", 3))
+				colorspace = 411;
+			else if (!strncmp(ctag, "420", 3))
+				colorspace =420;
+			else if (!strncmp(ctag, "mono", 4))
+				colorspace = 8;
+			else
+				return 0;
+		}
+
 		i++;
 	}
-	
-	if ((numerator==0) || (denominator==0) || (vi.width==0) || (vi.height==0)) return -1;
+
+	if (!numerator || !denominator || !vi.width || !vi.height)
+		return 0;
 
 	i++;
-	if (memcmp(headerbuf+i, "FRAME", 5) != 0) return -1;
+
+	if (!strncmp(headerbuf + i, "FRAME", 5))
+		return 0;
+
 	headeroffset = i;
-	i=i+5;
-	while ( (i<64) && (headerbuf[i]!='\n') ) {
+
+	i += 5;
+
+	while ((i < 128) && (headerbuf[i] != '\n'))
 		i++;
-	}
+
 	headerlen = i - (int)headeroffset + 1;
 	headeroffset = headeroffset + headerlen;
-	return +1;
+
+	return colorspace;
 }
 
 bool __stdcall RawSource::GetParity(int n) { return false; }
