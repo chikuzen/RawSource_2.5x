@@ -6,13 +6,13 @@
 <body bgcolor="#BED8CB" text="#000000">
 <h1>RawSource</h1>
 <h3>Loading raw video data from files</h3>
-<p>for AviSynth 2.5, 2.6, x86 & x64<br>
+<p>for AviSynth 2.5x<br>
 </p>
 <p><code>RawSource</code> (<var>string &quot;file&quot;, int &quot;widht&quot;, 
   int &quot;height&quot;, string &quot;pixel_type&quot;, string &quot;index&quot;, 
   bool &quot;show&quot;</var>)<br>
 </p>
-<p> RawSource opens a video file which contains YUV2, YV16, YV12, RGB or Y8 video 
+<p> RawSource opens a video file which contains YUY2, YV16, YV12, YV411, RGB or Y8 video 
   data.<br>
   There are three ways how the positions of the video frame data are calculated:</p>
 <ul>
@@ -24,14 +24,16 @@
     pixel_type. The index string can contain all or partial positions of the frames.</li>
 </ul>
 <p>Supported <var>pixel_type</var>s are:<br>
-  &nbsp;&nbsp;RGB, RGBA, BGR, BGRA (interleaved RGB without subsampling, resulting 
+  &nbsp;&nbsp;RGB, RGBA, BGR, BGRA, ARGB (interleaved RGB without subsampling, resulting 
   in AviSynth's RGB24 or RGB32)<br>
-  &nbsp;&nbsp;YUYV, YVYU, UYVY, VYUY (interleaved horizontally subsampled resulting 
-  in AviSynth's YUV2)<br>
-  &nbsp;&nbsp;YV16 (planar horizontally subsampled, it is converted to AviSynth's 
-  YUV2)<br>
-  &nbsp;&nbsp;I420, YV12 (planar horizontally and vertically subsampled resulting 
+  &nbsp;&nbsp;YUY2, YUYV, YVYU, UYVY, VYUY (interleaved horizontally subsampled resulting 
+  in AviSynth's YUY2)<br>
+  &nbsp;&nbsp;I422, YV16 (planar horizontally subsampled, it is converted to AviSynth's 
+  YUY2)<br>
+  &nbsp;&nbsp;I420, IYUV, YV12 (planar horizontally and vertically subsampled resulting 
   in AviSynth's YV12)<br>
+  &nbsp;&nbsp;I411, YV411 (planar horizontally subsampled, it is converted to AviSynth's 
+  YUY2 without chroma interpolate)<br>
   &nbsp;&nbsp;Y8 (luma only resulting in AviSynth's YV12 grey, 
   waiting for Avisynth 2.6 with native Y8 support)
   </p>
@@ -48,7 +50,7 @@
   <tr> 
     <td> 
       <pre>RawSource(&quot;d:\yuv4mpeg.yuv&quot;)  #this assumes there is a valid YUV4MPEG2-header inside.
-                              #If not, default values are used: width=720, height=576, pixel_type=&quot;YUV2&quot;</pre>
+                              #If not, default values are used: width=720, height=576, pixel_type=&quot;YUY2&quot;</pre>
     </td>
   </tr>
 </table>
@@ -182,6 +184,7 @@ frame 101 at 1200000 (using delta)<br>...<br>frame 125 at 1490000 (using big_del
   can be rounded. default 9 which means 2^9 = $100</p>
 <p>&nbsp;</p>
 <h4>Ernst Pech&eacute;, 2005-10-13</h4>
-Version 2006-07-28 - Added Y8 support (by Fizick,  http://avisynth.org.ru)
+Version 2006-07-28 - Added Y8 support (by Fizick,  http://avisynth.org.ru)<br>
+Version 2011-05-21 - Added YV411/I411 support (by Chikuzen,  http://github.com/chikuzen)
 </body>
 </html>
