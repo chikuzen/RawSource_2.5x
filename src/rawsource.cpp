@@ -164,14 +164,14 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
         mapcnt = 4;
     }
 
-    if (!stricmp(pixel_type,"YUYV")) {
+    if (!stricmp(pixel_type,"YUYV") || !stricmp(pixel_type, "YUY2")) {
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapping[0] = 0;
         mapping[1] = 1;
         mapcnt = 2;
     }
 
-    if (!stricmp(pixel_type, "UYVY") || !stricmp(pixel_type, "YUY2")) {
+    if (!stricmp(pixel_type, "UYVY")) {
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapping[0] = 1;
         mapping[1] = 0;
