@@ -64,6 +64,8 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
                       const char _pixel_type[], const char indexstring[],
                       const bool _show, IScriptEnvironment* env)
 {
+    memset(&vi, 0, sizeof(vi));
+
     if (_width > maxwidth) env->ThrowError("Width too big.");
 
     if ((h_rawfile = _open(name, _O_BINARY | _O_RDONLY)) == -1)
@@ -117,14 +119,16 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
         }
     }
 
-    if (!stricmp(pixel_type, "RGBA") || !stricmp(pixel_type, "RGB32")) {
+    if (!stricmp(pixel_type, "RGBA") ||
+        !stricmp(pixel_type, "RGB32")) {
         vi.pixel_type = VideoInfo::CS_BGR32;
         mapping[0] = 2;
         mapping[1] = 1;
         mapping[2] = 0;
         mapping[3] = 3;
         mapcnt = 4;
-    } else if (!stricmp(pixel_type,"BGRA") || !stricmp(pixel_type, "BGR32")) {
+    } else if (!stricmp(pixel_type, "BGRA") ||
+               !stricmp(pixel_type, "BGR32")) {
         vi.pixel_type = VideoInfo::CS_BGR32;
         mapping[0] = 0;
         mapping[1] = 1;
@@ -157,7 +161,8 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
         mapping[1] = 1;
         mapping[2] = 2;
         mapcnt = 3;
-    } else if (!stricmp(pixel_type,"YUYV") || !stricmp(pixel_type, "YUY2")) {
+    } else if (!stricmp(pixel_type, "YUYV") ||
+               !stricmp(pixel_type, "YUY2")) {
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapping[0] = 0;
         mapping[1] = 1;
@@ -181,11 +186,14 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
         mapping[2] = 3;
         mapping[3] = 0;
         mapcnt = 4;
-    } else if (!stricmp(pixel_type, "YV16") || !stricmp(pixel_type, "I422")) {
+    } else if (!stricmp(pixel_type, "YV16") ||
+               !stricmp(pixel_type, "I422")) {
     // YV16:planar YVU 422 | I422:planar YUV 422
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapcnt = 4;
-    } else if (!stricmp(pixel_type, "YV411") || !stricmp(pixel_type, "I411")) {
+    } else if (!stricmp(pixel_type, "YV411") ||
+               !stricmp(pixel_type, "Y41B")  ||
+               !stricmp(pixel_type, "I411")) {
     // Planar YUV411 format, write to YUY2 by duplicating chroma. (Added by Chikuzen)
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapcnt = 4;
@@ -194,7 +202,8 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
     //} else if (!stricmp(pixel_type, "Y411") || !stricmp(pixel_type, "IYU1")) {
     // UYYVYY411 Packed
     //    vi.pixel_type = VideoInfo::CS_YUY2;
-    } else if (!stricmp(pixel_type, "I420") || !stricmp(pixel_type, "IYUV")) {
+    } else if (!stricmp(pixel_type, "I420") ||
+               !stricmp(pixel_type, "IYUV")) {
         vi.pixel_type = VideoInfo::CS_I420;
         mapping[0] = PLANAR_Y;
         mapping[1] = PLANAR_U;
@@ -206,7 +215,8 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
         mapping[1] = PLANAR_V;
         mapping[2] = PLANAR_U;
         mapcnt = 3;
-    } else if (!stricmp(pixel_type, "Y8") || !stricmp(pixel_type, "GRAY")) {
+    } else if (!stricmp(pixel_type, "Y8") ||
+               !stricmp(pixel_type, "GRAY")) {
     //planar Y8 format (luma only), write to YV12 as grey. (Added by Fizick)
         if (!(vi.width & 1) && !(vi.height & 1)) {
             vi.pixel_type = VideoInfo::CS_YV12;
@@ -234,9 +244,12 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
                         " ABGR, YUY2, YUYV, UYVY, YVYU, VYUY, YV16, I422, YV411,"
                         " I411, YV12, I420, IYUV, NV12, NV21, Y8, GRAY");
 
-    if (!stricmp(pixel_type, "Y8") || !stricmp(pixel_type, "GRAY"))
+    if (!stricmp(pixel_type, "Y8") ||
+        !stricmp(pixel_type, "GRAY"))
         framesize = vi.width * vi.height;
-    else if (!stricmp(pixel_type, "I411") || !stricmp(pixel_type, "YV411")
+    else if (!stricmp(pixel_type, "I411") ||
+             !stricmp(pixel_type, "Y41B") ||
+             !stricmp(pixel_type, "YV411")
         //|| !stricmp(pixel_type, "Y411") || !stricmp(pixel_type, "IYU1") 
         )
         framesize = (vi.width * vi.height *3) >> 1;
@@ -431,7 +444,8 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
                 pdst += dst->GetPitch(mapping[i]);
             }
         }
-    } else if (!stricmp(pixel_type, "NV12") || !stricmp(pixel_type, "NV21")) {
+    } else if (!stricmp(pixel_type, "NV12") ||
+               !stricmp(pixel_type, "NV21")) {
     //planar NV12/NV21 (YUV420, 2plane, interleaved chroma), write to YV12. (Added by Chikuzen)
         pdst = dst->GetWritePtr(PLANAR_Y);
         for (i = 0; i < number_of_lines; i++) {
@@ -465,7 +479,8 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
             samples_per_line >>= mapping[i] == PLANAR_Y ? 1 : 0;
             number_of_lines >>= mapping[i] == PLANAR_Y ? 1 : 0;
         }
-    } else if (!stricmp(pixel_type, "YV16") || !stricmp(pixel_type, "I422")) {
+    } else if (!stricmp(pixel_type, "YV16") ||
+               !stricmp(pixel_type, "I422")) {
     // convert to YUY2 by rearranging bytes
         pdst = dst->GetWritePtr();
         //read and copy all luma lines
@@ -492,7 +507,9 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
             }
             uv_offset ^= 0x2; //switch u/v
         }
-    } else if (!stricmp(pixel_type, "YV411") || !stricmp(pixel_type, "I411")) {
+    } else if (!stricmp(pixel_type, "YV411") ||
+               !stricmp(pixel_type, "I411")  ||
+               !stricmp(pixel_type, "I411")) {
     // convert to YUY2 by rearranging bytes
         pdst = dst->GetWritePtr();
         //read and copy all luma lines
@@ -506,7 +523,7 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
         }
         //read and copy all UV lines
         samples_per_line >>= 2;
-        int uv_offset = stricmp(pixel_type, "I411") ? 3 : 1;
+        int uv_offset = stricmp(pixel_type, "YV411") ? 1 : 3;
         for (k = 0; k < 2; k++) {
             pdst = dst->GetWritePtr() + uv_offset;
             for (i = 0; i < number_of_lines; i++) {
