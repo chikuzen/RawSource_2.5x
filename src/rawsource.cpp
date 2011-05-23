@@ -13,24 +13,22 @@
 #pragma warning(disable:4996)
 
 #define maxwidth 2880
-#define MAX_RAWBUF 11520    //maxwidth * 4
+#define MAX_RAWBUF 11520 //maxwidth * 4
 
 class RawSource: public IClip {
 
     VideoInfo vi;
-    int h_rawfile;    //file handle for 64bit operations
+    int h_rawfile; //file handle for 64bit operations
     __int64 filelen;
-    __int64 headeroffset;   //YUV4MPEG2 header offset
-    int headerlen;    //YUV4MPEG2 frame header length
+    __int64 headeroffset; //YUV4MPEG2 header offset
+    int headerlen; //YUV4MPEG2 frame header length
     char headerbuf[128];
     char pixel_type[32];
-    unsigned char rawbuf[MAX_RAWBUF];    //max linesize 4Bytes * maxwidth
+    unsigned char rawbuf[MAX_RAWBUF]; //max linesize 4Bytes * maxwidth
     int ret;
     int mapping[4];
     int mapcnt;
-    int maxframe;
     int framesize;
-
     int level;
     bool show;    //show debug info
 
@@ -119,124 +117,133 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
         }
     }
 
-    vi.pixel_type = VideoInfo::CS_UNKNOWN;
-
-    if (!stricmp(pixel_type, "RGB")) {
-        vi.pixel_type = VideoInfo::CS_BGR24;
-        mapping[0] = 2;
-        mapping[1] = 1;
-        mapping[2] = 0;
-        mapcnt = 3;
-    }
-
-    if (!stricmp(pixel_type, "BGR")) {
-        vi.pixel_type = VideoInfo::CS_BGR24;
-        mapping[0] = 0;
-        mapping[1] = 1;
-        mapping[2] = 2;
-        mapcnt = 3;
-    }
-
-    if (!stricmp(pixel_type, "RGBA")) {
+    if (!stricmp(pixel_type, "RGBA") || !stricmp(pixel_type, "RGB32")) {
         vi.pixel_type = VideoInfo::CS_BGR32;
         mapping[0] = 2;
         mapping[1] = 1;
         mapping[2] = 0;
         mapping[3] = 3;
         mapcnt = 4;
-    }
-
-    if (!stricmp(pixel_type,"BGRA")) {
+    } else if (!stricmp(pixel_type,"BGRA") || !stricmp(pixel_type, "BGR32")) {
         vi.pixel_type = VideoInfo::CS_BGR32;
         mapping[0] = 0;
         mapping[1] = 1;
         mapping[2] = 2;
         mapping[3] = 3;
         mapcnt = 4;
-    }
-
-    if (!stricmp(pixel_type,"ARGB")) {
+    } else if (!stricmp(pixel_type,"ARGB")) {
         vi.pixel_type = VideoInfo::CS_BGR32;
         mapping[0] = 3;
         mapping[1] = 2;
         mapping[2] = 1;
         mapping[3] = 0;
         mapcnt = 4;
-    }
-
-    if (!stricmp(pixel_type,"YUYV") || !stricmp(pixel_type, "YUY2")) {
+    } else if (!stricmp(pixel_type, "ABGR")) {
+        vi.pixel_type = VideoInfo::CS_BGR32;
+        mapping[0] = 1;
+        mapping[1] = 2;
+        mapping[2] = 3;
+        mapping[3] = 0;
+        mapcnt = 4;
+    } else if (!stricmp(pixel_type, "RGB")) {
+        vi.pixel_type = VideoInfo::CS_BGR24;
+        mapping[0] = 2;
+        mapping[1] = 1;
+        mapping[2] = 0;
+        mapcnt = 3;
+    } else if (!stricmp(pixel_type, "BGR")) {
+        vi.pixel_type = VideoInfo::CS_BGR24;
+        mapping[0] = 0;
+        mapping[1] = 1;
+        mapping[2] = 2;
+        mapcnt = 3;
+    } else if (!stricmp(pixel_type,"YUYV") || !stricmp(pixel_type, "YUY2")) {
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapping[0] = 0;
         mapping[1] = 1;
         mapcnt = 2;
-    }
-
-    if (!stricmp(pixel_type, "UYVY")) {
+    } else if (!stricmp(pixel_type, "UYVY")) {
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapping[0] = 1;
         mapping[1] = 0;
         mapcnt = 2;
-    }
-
-    if (!stricmp(pixel_type, "YVYU")) {
+    } else if (!stricmp(pixel_type, "YVYU")) {
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapping[0] = 0;
         mapping[1] = 3;
         mapping[2] = 2;
         mapping[3] = 1;
         mapcnt = 4;
-    }
-
-    if (!stricmp(pixel_type,"VYUY")) {
+    } else if (!stricmp(pixel_type,"VYUY")) {
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapping[0] = 1;
         mapping[1] = 2;
         mapping[2] = 3;
         mapping[3] = 0;
         mapcnt = 4;
-    }
-
-    if (!stricmp(pixel_type, "YV16") || !stricmp(pixel_type, "I422")) {
+    } else if (!stricmp(pixel_type, "YV16") || !stricmp(pixel_type, "I422")) {
     // YV16:planar YVU 422 | I422:planar YUV 422
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapcnt = 4;
-    }
-    
-    if (!stricmp(pixel_type, "YV411") || !stricmp(pixel_type, "I411")) {
-    // YV411:planar YVU 411 | I411:planar YUV 411
+    } else if (!stricmp(pixel_type, "YV411") || !stricmp(pixel_type, "I411")) {
+    // Planar YUV411 format, write to YUY2 by duplicating chroma. (Added by Chikuzen)
         vi.pixel_type = VideoInfo::CS_YUY2;
         mapcnt = 4;
-    }
-
-    if (!stricmp(pixel_type, "I420") || !stricmp(pixel_type, "IYUV")) {
+    // I couldn't find any sample to test this code.
+    // Is there a person who has the Y411 sample ? (20110523 Chikuzen)
+    //} else if (!stricmp(pixel_type, "Y411") || !stricmp(pixel_type, "IYU1")) {
+    // UYYVYY411 Packed
+    //    vi.pixel_type = VideoInfo::CS_YUY2;
+    } else if (!stricmp(pixel_type, "I420") || !stricmp(pixel_type, "IYUV")) {
+        vi.pixel_type = VideoInfo::CS_I420;
+        mapping[0] = PLANAR_Y;
+        mapping[1] = PLANAR_U;
+        mapping[2] = PLANAR_V;
+        mapcnt = 3;
+    } else if (!stricmp(pixel_type, "YV12")) {
         vi.pixel_type = VideoInfo::CS_YV12;
-        mapping[0] = 0;
-        mapcnt = 1;
-    }
-
-    if (!stricmp(pixel_type, "YV12")) {
-        vi.pixel_type = VideoInfo::CS_YV12;
-        mapping[0] = 1;
-        mapcnt = 1;
-    }
-
-    if (!stricmp(pixel_type, "Y8")) {
+        mapping[0] = PLANAR_Y;
+        mapping[1] = PLANAR_V;
+        mapping[2] = PLANAR_U;
+        mapcnt = 3;
+    } else if (!stricmp(pixel_type, "Y8") || !stricmp(pixel_type, "GRAY")) {
     //planar Y8 format (luma only), write to YV12 as grey. (Added by Fizick)
+        if (!(vi.width & 1) && !(vi.height & 1)) {
+            vi.pixel_type = VideoInfo::CS_YV12;
+            mapping[0] = PLANAR_Y;
+            mapping[1] = PLANAR_U;
+            mapping[2] = PLANAR_V;
+            mapcnt = 3;
+        } else
+            env->ThrowError("width and height must be even.");
+    } else if (!stricmp(pixel_type, "NV12")) {
+    //planar YUV420 (2plane, interleaved chroma), write to YV12. (Added by Chikuzen)
+        vi.pixel_type = VideoInfo::CS_I420;
+        mapping[0] = PLANAR_Y;
+        mapping[1] = PLANAR_U;
+        mapping[2] = PLANAR_V;
+        mapcnt = 2;
+    } else if (!stricmp(pixel_type, "NV21")) {
         vi.pixel_type = VideoInfo::CS_YV12;
-        mapcnt = 1;
-    }
+        mapping[0] = PLANAR_Y;
+        mapping[1] = PLANAR_V;
+        mapping[2] = PLANAR_U;
+        mapcnt = 2;
+    } else
+        env->ThrowError("Invalid pixel type. Supported: RGB, RGBA, BGR, BGRA, ARGB,"
+                        " ABGR, YUY2, YUYV, UYVY, YVYU, VYUY, YV16, I422, YV411,"
+                        " I411, YV12, I420, IYUV, NV12, NV21, Y8, GRAY");
 
-    if (vi.pixel_type == VideoInfo::CS_UNKNOWN)
-        env->ThrowError("Invalid pixel type. Supported: RGB, RGBA, BGR, BGRA, ARGB, YUY2, YUYV, UYVY, YVYU, VYUY, YV16, I422, YV411, I411, YV12, I420, IYUV, Y8");
-
-    if (!stricmp(pixel_type, "Y8"))
+    if (!stricmp(pixel_type, "Y8") || !stricmp(pixel_type, "GRAY"))
         framesize = vi.width * vi.height;
-    else if (!stricmp(pixel_type, "YV411") || !stricmp(pixel_type, "I411"))
-        framesize = ((vi.width * 12) >> 3) * vi.height;
+    else if (!stricmp(pixel_type, "I411") || !stricmp(pixel_type, "YV411")
+        //|| !stricmp(pixel_type, "Y411") || !stricmp(pixel_type, "IYU1") 
+        )
+        framesize = (vi.width * vi.height *3) >> 1;
     else
-        framesize = ((vi.width * vi.BitsPerPixel()) >> 3) * vi.height;
+        framesize = (vi.width * vi.height * vi.BitsPerPixel()) >> 3;
 
-    maxframe = (int)(filelen / (__int64)framesize);    //1 = one frame
+    int maxframe = (int)(filelen / (__int64)framesize);    //1 = one frame
 
     if (maxframe < 1)
         env->ThrowError("File too small for even one frame.");
@@ -244,7 +251,7 @@ RawSource::RawSource (const char name[], const int _width, const int _height,
     index = new i_struct[maxframe + 1];
     rawindex = new ri_struct[maxframe + 1];
 
-//    index build using string descriptor
+//index build using string descriptor
     char * indstr;
     FILE * indexfile;
     char seps[] = " \n";
@@ -376,9 +383,7 @@ RawSource::~RawSource() {
 
 PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
     unsigned char* pdst;
-    int i;
-    int j;
-    int k;
+    int i, j, k;
     int samples_per_line = vi.width;
     int number_of_lines = vi.height;
     PVideoFrame dst;
@@ -406,11 +411,11 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
         return dst;    //error. do nothing
 
     if (!stricmp(pixel_type,"Y8")) {
-//planar Y8 format (luma only), write to YV12 as grey. (Added by Fizick)
+    //planar Y8 format (luma only), write to YV12 as grey. (Added by Fizick)
         pdst = dst->GetWritePtr(PLANAR_Y);
-        for (i=0; i < number_of_lines; i++) {
+        for (i = 0; i < number_of_lines; i++) {
             memset(rawbuf, 128, MAX_RAWBUF);
-            ret = _read(h_rawfile, rawbuf, samples_per_line);    //luma bytes
+            ret = _read(h_rawfile, rawbuf, samples_per_line);
             memcpy(pdst, rawbuf, samples_per_line);
             pdst += dst->GetPitch(PLANAR_Y);
         }
@@ -418,58 +423,48 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
         samples_per_line >>= 1;
         number_of_lines >>= 1;
 
-        pdst = dst->GetWritePtr(PLANAR_U);
-        memset(rawbuf, 128, MAX_RAWBUF);
-        for (i = 0; i < number_of_lines; i++) {
-            memcpy(pdst, rawbuf, samples_per_line);
-            pdst += dst->GetPitch(PLANAR_U);
+        for (i = 1; i < 3; i++) {
+            pdst = dst->GetWritePtr(mapping[i]);
+            memset(rawbuf, 128, MAX_RAWBUF);
+            for (j = 0; j < number_of_lines; j++) {
+                memcpy(pdst, rawbuf, samples_per_line);
+                pdst += dst->GetPitch(mapping[i]);
+            }
         }
-
-        pdst = dst->GetWritePtr(PLANAR_V);
-        memset(rawbuf, 128, MAX_RAWBUF);
-        for (i = 0; i < number_of_lines; i++) {
-            memcpy(pdst, rawbuf, samples_per_line);
-            pdst += dst->GetPitch(PLANAR_V);
-        }
-    }
-    else
-    if (vi.IsPlanar()) {
-//planar formats. Assuming 4 luma pixels with 1 chroma pair
+    } else if (!stricmp(pixel_type, "NV12") || !stricmp(pixel_type, "NV21")) {
+    //planar NV12/NV21 (YUV420, 2plane, interleaved chroma), write to YV12. (Added by Chikuzen)
         pdst = dst->GetWritePtr(PLANAR_Y);
         for (i = 0; i < number_of_lines; i++) {
             memset(rawbuf, 0, MAX_RAWBUF);
-            ret = _read(h_rawfile, rawbuf, samples_per_line);    //luma bytes
-            memcpy (pdst, rawbuf, samples_per_line);
+            ret = _read(h_rawfile, rawbuf, samples_per_line);
+            memcpy(pdst, rawbuf, samples_per_line);
             pdst += dst->GetPitch(PLANAR_Y);
         }
-
-        samples_per_line >>= 1;
         number_of_lines >>= 1;
-        //switching between UV and VU
-        if (!mapping[0])
-            pdst = dst->GetWritePtr(PLANAR_U);
-        else
-            pdst = dst->GetWritePtr(PLANAR_V);
-
+        pdst = dst->GetWritePtr(mapping[1]);
+        unsigned char *pdst2 = dst->GetWritePtr(mapping[2]);
         for (i = 0; i < number_of_lines; i++) {
             memset(rawbuf, 0, MAX_RAWBUF);
-            ret = _read(h_rawfile, rawbuf, samples_per_line);    //chroma bytes
-            memcpy (pdst, rawbuf, samples_per_line);
-            pdst += dst->GetPitch(PLANAR_U);
+            ret = _read(h_rawfile, rawbuf, samples_per_line);
+            for (j = 0; j < (samples_per_line >> 1); j++) {
+                pdst[j]  = rawbuf[j << 1];
+                pdst2[j] = rawbuf[(j << 1) + 1];
+            }
+            pdst  += dst->GetPitch(mapping[1]);
+            pdst2 += dst->GetPitch(mapping[2]);
         }
-
-        if (!mapping[0])
-            pdst = dst->GetWritePtr(PLANAR_V);
-        else
-            pdst = dst->GetWritePtr(PLANAR_U);
-
-        for (i = 0; i < number_of_lines; i++) {
-            memset(rawbuf, 0, MAX_RAWBUF);
-            ret = _read(h_rawfile, rawbuf, samples_per_line);    //chroma bytes
-            memcpy (pdst, rawbuf, samples_per_line);
-            pdst += dst->GetPitch(PLANAR_V);
+    } else if (vi.IsPlanar()) { // YV12, I420 or IYUV
+        for (i = 0; i < mapcnt; i++) {
+            pdst = dst->GetWritePtr(mapping[i]);
+            for (j = 0; j < number_of_lines; j++) {
+                memset(rawbuf, 0, MAX_RAWBUF);
+                ret = _read(h_rawfile, rawbuf, samples_per_line);
+                memcpy (pdst, rawbuf, samples_per_line);
+                pdst += dst->GetPitch(mapping[i]);
+            }
+            samples_per_line >>= mapping[i] == PLANAR_Y ? 1 : 0;
+            number_of_lines >>= mapping[i] == PLANAR_Y ? 1 : 0;
         }
-
     } else if (!stricmp(pixel_type, "YV16") || !stricmp(pixel_type, "I422")) {
     // convert to YUY2 by rearranging bytes
         pdst = dst->GetWritePtr();
@@ -498,7 +493,9 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
             uv_offset ^= 0x2; //switch u/v
         }
     } else if (!stricmp(pixel_type, "YV411") || !stricmp(pixel_type, "I411")) {
+    // convert to YUY2 by rearranging bytes
         pdst = dst->GetWritePtr();
+        //read and copy all luma lines
         for (i = 0; i < number_of_lines; i++) {
             memset(rawbuf, 0, MAX_RAWBUF);
             ret = _read(h_rawfile, rawbuf, samples_per_line);
@@ -507,6 +504,7 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
             }
             pdst += dst->GetPitch();
         }
+        //read and copy all UV lines
         samples_per_line >>= 2;
         int uv_offset = stricmp(pixel_type, "I411") ? 3 : 1;
         for (k = 0; k < 2; k++) {
@@ -516,23 +514,43 @@ PVideoFrame __stdcall RawSource::GetFrame(int n, IScriptEnvironment* env) {
                 ret = _read(h_rawfile, rawbuf, samples_per_line);
                 for (j = 0; j < samples_per_line; j++) {
                     pdst[j << 3] = rawbuf[j];
-                    pdst[(j << 3) + 4] = rawbuf[j];
+                    pdst[(j << 3) + 4] = rawbuf[j]; //duplicate chroma
                 }
                 pdst += dst->GetPitch();
             }
-            uv_offset ^= 0x2;
+            uv_offset ^= 0x2; //switch u/v
         }
-    } else {
-//interleaved formats
-        samples_per_line *= vi.IsRGB32() ? 4 : vi.IsRGB() ? 3 : 2;
+/*    } else if (!stricmp(pixel_type, "Y411") || !stricmp(pixel_type, "IYU1")) {
+        samples_per_line = vi.width * 3 >> 1;
+        k = samples_per_line / 6;
         pdst = dst->GetWritePtr();
-
+        for (i = 0; i < number_of_lines; i++) {
+            memset(rawbuf, 0, MAX_RAWBUF);
+            ret = _read(h_rawfile, rawbuf, samples_per_line);
+            for (j = 0; j < k; j++) {
+                int l = j << 3;
+                int m = j * 6;
+                pdst[l]     = rawbuf[m + 1]; //Y
+                pdst[l + 1] = rawbuf[m + 0]; //U
+                pdst[l + 2] = rawbuf[m + 2]; //Y
+                pdst[l + 3] = rawbuf[m + 3]; //V
+                pdst[l + 4] = rawbuf[m + 4]; //Y
+                pdst[l + 5] = rawbuf[m + 0]; //U(duplicate)
+                pdst[l + 6] = rawbuf[m + 5]; //Y
+                pdst[l + 7] = rawbuf[m + 3]; //V(duplicate)
+            }
+            pdst += dst->GetPitch();
+        }*/
+    } else {
+    //interleaved formats
+        samples_per_line *= (vi.BitsPerPixel() >> 3);
+        pdst = dst->GetWritePtr();
         //read and copy all lines
         for (i = 0; i < number_of_lines; i++) {
             memset(rawbuf, 0, MAX_RAWBUF);
             ret = _read(h_rawfile, rawbuf, samples_per_line);
             for (j = 0; j < samples_per_line / mapcnt; j++) {
-                for (k=0; k < mapcnt; k++) {
+                for (k = 0; k < mapcnt; k++) {
                     pdst[j * mapcnt + k] = rawbuf[j * mapcnt + mapping[k]];
                 }
             }
