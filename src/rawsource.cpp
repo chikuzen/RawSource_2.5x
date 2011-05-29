@@ -23,6 +23,7 @@
 #define Y4M_STREAM_MAGIC_LEN 9
 #define Y4M_FRAME_MAGIC "FRAME"
 #define Y4M_FRAME_MAGIC_LEN 5
+#define Y4M_LINE_TERMINATOR '\n'
 
 class RawSource: public IClip {
 
@@ -614,7 +615,7 @@ int RawSource::ParseHeader() {
     vi.height = 0;
     vi.width = 0;
 
-    while ((i < MAX_Y4M_HEADER - 2) && (headerbuf[i] != '\n')) {
+    while ((i < MAX_Y4M_HEADER - 2) && (headerbuf[i] != Y4M_LINE_TERMINATOR)) {
         if (!strncmp(headerbuf + i, " W", 2)) {
             sscanf(headerbuf + i + 2, "%d", &vi.width);
 
@@ -662,14 +663,14 @@ int RawSource::ParseHeader() {
 
     i++;
 
-    if (strncmp(headerbuf + i, "FRAME", 5))
+    if (strncmp(headerbuf + i, Y4M_FRAME_MAGIC, Y4M_FRAME_MAGIC_LEN))
         return -1;
 
     headeroffset = i;
 
-    i += 5;
+    i += Y4M_FRAME_MAGIC_LEN;
 
-    while ((i < 128) && (headerbuf[i] != '\n'))
+    while ((i < MAX_Y4M_HEADER) && (headerbuf[i] != Y4M_LINE_TERMINATOR))
         i++;
 
     headerlen = i - (int)headeroffset + 1;
