@@ -1,7 +1,7 @@
 <html>
 <head>
 <title>RawSource</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body bgcolor="#BED8CB" text="#000000">
 <h1>RawSource</h1>
@@ -9,8 +9,8 @@
 <p>for AviSynth 2.5x<br>
 </p>
 <p><code>RawSource</code> (<var>string &quot;file&quot;, int &quot;widht&quot;, 
-  int &quot;height&quot;, string &quot;pixel_type&quot;, string &quot;index&quot;, 
-  bool &quot;show&quot;</var>)<br>
+  int &quot;height&quot;, string &quot;pixel_type&quot;, int &quot;fpsnum&quot;, 
+  int &quot;fpsden&quot;, string &quot;index&quot;, bool &quot;show&quot;</var>)<br>
 </p>
 <p> RawSource opens a video file which contains 8bit YUV422, YUV411, YUV420,
  Y8, or RGB video data.<br>
@@ -18,10 +18,10 @@
 <ul>
   <li>a YUV4MPEG2-header is found, width/height/framerate/pixeltype/fieldorder
   is set according to the header data. Only fixed-length FRAME headers are supported.</li>
-  <li>width, height and pixel_type is given as arguments. Then the positions are 
-    calculated assuming that only video data is in the file.</li>
+  <li>width, height, pixel_type, framerate(fpsnum and fpsden) is given as arguments.
+  Then the positions are calculated assuming that only video data is in the file.</li>
   <li>an &quot;index&quot; string (or file) is given together with width, height, 
-    pixel_type. The index string can contain all or partial positions of the frames.</li>
+    pixel_type, fpsnum, fpsden. The index string can contain all or partial positions of the frames.</li>
 </ul>
 <p>Supported <var>pixel_type</var>s are:<br>
   &nbsp;&nbsp;RGB, RGBA, BGR, BGRA, ARGB, ABGR (interleaved RGB without subsampling, resulting 
@@ -35,13 +35,12 @@
   &nbsp;&nbsp;NV12, NV21 (planar horizontally and vertically subsampled resulting
   in AviSynth's YV12)<br>
   &nbsp;&nbsp;I411(Y41B), YV411 (planar horizontally subsampled, it is converted to AviSynth's 
-  YUY2 without chroma interpolate)<br>
-  &nbsp;&nbsp;Y8 (luma only resulting in AviSynth's YV12 grey, 
+  YUY2 without chroma interpolation)<br>
+  &nbsp;&nbsp;Y8(GRAY) (luma only resulting in AviSynth's YV12 grey, 
   waiting for Avisynth 2.6 with native Y8 support)
   </p>
-<p>Maximal <var>width</var> is 2880.<br>
-  The framerate is fixed to 25fps, you can change it with AssumeFPS, if you need 
-  (e.g. for NTSC-material).</p>
+<p>Maximal <var>width</var> is 4096.<br>
+  If you don't specified fpsnum and/or fpsden, framerate is fixed to 25/1fps.</p>
 <p>With <var>show</var>=true the actually used byteposition for that frame is displayed, 
   followed by:<br>
   &nbsp;K = position given in index is used<br>
@@ -52,7 +51,8 @@
   <tr> 
     <td> 
       <pre>RawSource(&quot;d:\yuv4mpeg.yuv&quot;)  #this assumes there is a valid YUV4MPEG2-header inside.
-                              #If not, default values are used: width=720, height=576, pixel_type=&quot;YUY2&quot;</pre>
+                              #If not, default values are used:
+                                width=720, height=576, pixel_type=&quot;YUY2&quot;, fpsnum=25, fpsden=1</pre>
     </td>
   </tr>
 </table>
@@ -188,6 +188,7 @@ frame 101 at 1200000 (using delta)<br>...<br>frame 125 at 1490000 (using big_del
 <h4>Ernst Pech&eacute;, 2005-10-13</h4>
 Version 2006-07-28 - Added Y8 support (by Fizick,  http://avisynth.org.ru)<br>
 Version 2011-05-21 - Added YV411/I411 support (by Chikuzen,  http://github.com/chikuzen)<br>
-Version 2011-05-23 - Added ABGR/NV12/NV21 support (by Chikuzen)
+Version 2011-05-23 - Added ABGR/NV12/NV21 support (by Chikuzen)<br>
+Version 2011-05-29 - Change maximal width from 2880 to 4096. Added new parameters fpsnum/fpsden (by Chikuzen)
 </body>
 </html>
